@@ -72,20 +72,32 @@ for page in pages:
         pageCanvas = not(pageCanvas)
 
         readIndex = lines.index('Patient ID:')
-        startX2 = 0
+        startX2 = 10000000
         for i in range(nbColumn):
             readIndex = lines[readIndex+2:].index('Y') + readIndex+2 +1
             while readIndex < len(lines) and lines[readIndex] != '':
                 mainDict[str(indexTag +i)]["Y"] += [float(lines[readIndex])]
                 readIndex += 1
-            if i == 1:
-                startX2 = readIndex+1
+            if readIndex < len(lines) and lines[readIndex] == '':
+                try:
+                    temp = float(lines[readIndex+1])
+                    if readIndex+1 < startX2:
+                        startX2 = readIndex+1
+                except:
+                    continue
         readIndex = lines.index('Patient ID:')
         for i in range(nbColumn):
             readIndex = lines[readIndex+2:].index('X1') + readIndex+2 +1
             while readIndex < len(lines) and lines[readIndex] != '':
                 mainDict[str(indexTag +i)]["X1"] += [float(lines[readIndex])]
                 readIndex += 1
+            if readIndex < len(lines) and lines[readIndex] == '':
+                try:
+                    temp = float(lines[readIndex+1])
+                    if readIndex+1 < startX2:
+                        startX2 = readIndex+1
+                except:
+                    continue
         readIndex = lines.index('Patient ID:')
         for i in range(nbColumn):
             readIndex = lines[readIndex+2:].index('X2') + readIndex+2 +1
