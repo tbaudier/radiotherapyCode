@@ -66,9 +66,15 @@ for page in pages:
             mainDict[str(indexTag+i)]["X1"] = []
             mainDict[str(indexTag+i)]["X2"] = []
         readIndex = lines.index('Patient ID:')
-        for i in range(nbColumn):
+        i = 0
+        while i<nbColumn:
             readIndex = lines[readIndex+2:].index(str(mainDict["fractions"])) + readIndex+2 +1
-            mainDict[str(indexTag +i)]["MU"] = float(lines[readIndex])
+            try:
+                int(lines[readIndex])
+                readIndex = readIndex -1
+            except:
+                mainDict[str(indexTag +i)]["MU"] = float(lines[readIndex])
+                i += 1
         pageCanvas = not(pageCanvas)
 
         readIndex = lines.index('Patient ID:')
