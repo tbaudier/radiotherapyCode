@@ -1,6 +1,7 @@
 import pdfminer.high_level
 import openpyxl
 from openpyxl import Workbook
+import sys
 #Read the pdf
 text = pdfminer.high_level.extract_text('/Users/tbaudier/guillaume/2004649_Segment.pdf')
 
@@ -15,33 +16,44 @@ pages = text.split('\x0c')
 #  . indexTag represents the entry in mainDict for a column in the pdf
 #  . nbColumn is the number of columns per page (usually 4)
 #  . readIndex (defined later) is the current index of where we are reading the file
+#  . nbRow (defined later) is the number of rows in the odd page
 pageCanvas = True
 mainDict = {}
 indexTag = 1
 nbColumn = 0
 
 #We will read all pages, and separate all lines, then according to the pageCanvas we have 2 different ways to read the page
-for page in pages:
+for page, pageIndex in zip(pages, range(len(pages))):
     lines = page.split('\n')
     #print(lines)
     
     #For odd pages, everything start with the entry Patient ID
     #We look for all -20.00 because we have the Length1 and Length2 after that
-    #We look for all "something" Sart or "something" End because this is the tag name and we have just after that the angle
-    #We look for fractions because just after that we have the MU. Fractions is identical for all pages and for the first page it's just before the first X2 (différent place for other pages)
+    #We look for all "something" Start or "something" End because this is the tag name and we have just after that the angle
+    #We look for fractions because just after that we have the MU. Fractions is identical for all pages and for the first page it's just before the first X2 (different place for other pages)
+    #We look for the number of rows in the page. To do so, we look for the first index value in the following page -1
     #We look for all Y because until an empty string ('') we have all Y values
     #We look for all X1 because until an empty string ('') we have all Y values
-    #For X2 it's a little bit more complicated: the first X2 do not correspond to the values, the values are straight after the second Y. For the other X2 it is correct
-    #We stored the values for 4 columns by 1 page
+    #For X2 it's a little bit more complicated: the first X2 is not followed by the values. To find the values we look for nbRows float between 2 empty string. For the other X2 it is correct
+    #We stored the values for nbColumn (usually 4) columns by 1 page
 
     if pageCanvas and 'Patient ID:' in lines: #canvas like page 1
         readIndex = 0
+        nbRow = 0
         readIndex = lines.index('Patient ID:')
         if not "patientId" in mainDict:
             mainDict["patientId"] = int(lines[readIndex+2])
         if not "fractions" in mainDict:
             readIndex = lines.index('X2')
             mainDict["fractions"] = int(lines[readIndex-2])
+        linesSecondPage = pages[pageIndex +1].split('\n')
+        readIndexSecondPage = linesSecondPage.index('Index ')
+        while readIndexSecondPage < len(linesSecondPage):
+            try:
+                nbRow = int(linesSecondPage[readIndexSecondPage]) -1
+                break
+            except:
+                readIndexSecondPage += 1
         readIndex = lines.index('Patient ID:')
         nbColumn = 0
         while readIndex < len(lines):
@@ -84,38 +96,43 @@ for page in pages:
             while readIndex < len(lines) and lines[readIndex] != '':
                 mainDict[str(indexTag +i)]["Y"] += [float(lines[readIndex])]
                 readIndex += 1
-            if readIndex < len(lines) and lines[readIndex] == '':
-                try:
-                    temp = float(lines[readIndex+1])
-                    if readIndex+1 < startX2:
-                        startX2 = readIndex+1
-                except:
-                    continue
         readIndex = lines.index('Patient ID:')
         for i in range(nbColumn):
             readIndex = lines[readIndex+2:].index('X1') + readIndex+2 +1
             while readIndex < len(lines) and lines[readIndex] != '':
                 mainDict[str(indexTag +i)]["X1"] += [float(lines[readIndex])]
                 readIndex += 1
-            if readIndex < len(lines) and lines[readIndex] == '':
-                try:
-                    temp = float(lines[readIndex+1])
-                    if readIndex+1 < startX2:
-                        startX2 = readIndex+1
-                except:
-                    continue
         readIndex = lines.index('Patient ID:')
         for i in range(nbColumn):
             readIndex = lines[readIndex+2:].index('X2') + readIndex+2 +1
             if i == 0:
+                tempFirstReadIndex = readIndex
+                listAllEmpytString = [i+readIndex for i,val in enumerate(lines[readIndex:]) if val==""]
+                listAllEmpytString = [0] + listAllEmpytString
+                j = 1
+                foundX2 = False
+                while (j<len(listAllEmpytString) and listAllEmpytString[j] - listAllEmpytString[j-1] -1 != nbRow) or not foundX2:
+                    if listAllEmpytString[j] - listAllEmpytString[j-1] -1 == nbRow:
+                        try:
+                            _ = int(lines[listAllEmpytString[j-1]+1])
+                        except:
+                            startX2 = listAllEmpytString[j-1]+1
+                            break
+                    j += 1
+                if startX2 == 10000000:
+                    print("X2 was not found")
+                    sys.exit()
                 readIndex = startX2
             while readIndex < len(lines) and lines[readIndex] != '':
                 mainDict[str(indexTag +i)]["X2"] += [float(lines[readIndex])]
                 readIndex += 1
+            if i == 0:
+                readIndex = tempFirstReadIndex
     
-    #For pair pages, everything start with the entry Index
+    #For pair pages, everything start with the entry Index determined before to know the nbRow
     #Y, X1 and X2 are well ordered separated by an empty string (''), so it's easy
     # We just have to read everything one entry by one entry
+    # We store nbStrips to check later if it's always the same number (usually 80)
     
     else: #canvas like page 2
         readIndex = 0
@@ -124,10 +141,11 @@ for page in pages:
             indexTag += nbColumn
             pageCanvas = not(pageCanvas)
             continue
-        readIndex = lines.index('Index ')
-        readIndex += 2
+        readIndex += readIndexSecondPage
         while readIndex < len(lines) and lines[readIndex] != '':
             readIndex += 1
+        if not "nbStrips" in mainDict and readIndex < len(lines) and lines[readIndex] == '':
+            mainDict["nbStrips"] = int(lines[readIndex-1])
         for i in range(nbColumn):
             readIndex += 1
             while readIndex < len(lines) and lines[readIndex] != '':
@@ -146,18 +164,25 @@ for page in pages:
 #print(mainDict)
 
 ##Check the vlaues
-#Check if for all entries of mainDict, there is a valuable value and 80 values for list
-for i in range(len(mainDict)-2):
+#Check if for all entries of mainDict, the type of the value is correct type and there is nbStrip (usually 80) values for list
+
+if not isinstance(mainDict["nbStrips"], int):
+    print("nbStrips is not correct")
+    print(mainDict["nbStrips"])
+if mainDict["nbStrips"] != 80:
+    print("nbStrips is not equal to 80")
+    print(mainDict["nbStrips"])
+for i in range(len(mainDict)-3):
     if mainDict[str(i+1)]["Tag"] == "":
         print("Tag is not correct for " + str(i+1))
         print(mainDict[str(i+1)]["Tag"])
-    if len(mainDict[str(i+1)]["Y"]) != 80:
+    if len(mainDict[str(i+1)]["Y"]) != mainDict["nbStrips"]:
         print("Y is not correct for " + mainDict[str(i+1)]["Tag"])
         print(mainDict[str(i+1)]["Y"])
-    if len(mainDict[str(i+1)]["X1"]) != 80:
+    if len(mainDict[str(i+1)]["X1"]) != mainDict["nbStrips"]:
         print("X1 is not correct for " + mainDict[str(i+1)]["Tag"])
         print(mainDict[str(i+1)]["X1"])
-    if len(mainDict[str(i+1)]["X2"]) != 80:
+    if len(mainDict[str(i+1)]["X2"]) != mainDict["nbStrips"]:
         print("X2 is not correct for " + mainDict[str(i+1)]["Tag"])
         print(mainDict[str(i+1)]["X2"])
     if not isinstance(mainDict[str(i+1)]["MU"], float):
@@ -192,7 +217,7 @@ for row in range(80):
     _ = ws.cell(column=1, row=row+7, value=str(row+1))
 
 #Write for all entries in mainDict
-for i in range(len(mainDict)-2):
+for i in range(len(mainDict)-3):
     _ = ws.cell(column=3*i+2, row=1, value=mainDict[str(i+1)]["Tag"])
     _ = ws.cell(column=3*i+2, row=2, value=mainDict[str(i+1)]["Angle"])
     _ = ws.cell(column=3*i+2, row=3, value=mainDict[str(i+1)]["Length1"])
