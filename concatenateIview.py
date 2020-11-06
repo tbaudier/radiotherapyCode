@@ -1,9 +1,22 @@
 #!/usr/bin/env python3
+
 import click
 import xml.etree.ElementTree as ET
 import os
 import shutil
+import sys
 from dict2xml import dict2xml
+from PyQt5.QtWidgets import (QFileDialog, QAbstractItemView, QListView,
+                             QTreeView, QApplication, QDialog)
+
+class getExistingDirectories(QFileDialog):
+    def __init__(self, *args):
+        super(getExistingDirectories, self).__init__(*args)
+        self.setOption(self.DontUseNativeDialog, True)
+        self.setFileMode(self.Directory)
+        self.setOption(self.ShowDirsOnly, True)
+        self.findChildren(QListView)[0].setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.findChildren(QTreeView)[0].setSelectionMode(QAbstractItemView.ExtendedSelection)
 
 class XmlListConfig(list):
     def __init__(self, aList):
@@ -75,7 +88,14 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 def concatenateIview_main(folders, output):
     concatenateIview(folders)
 
-def concatenateIview(folders, output='.'):
+def concatenateIview(folders='.', output='.'):
+
+    qapp = QApplication(sys.argv)
+    dlg = getExistingDirectories()
+    if dlg.exec_() == QDialog.Accepted:
+        print(dlg.selectedFiles())
+    folders = dlg.selectedFiles()
+
     #Control the minimal number of folders
     if len(folders) < 2:
         return()
@@ -83,7 +103,10 @@ def concatenateIview(folders, output='.'):
     #copy the first folder
     outputFolder = os.path.join(output, os.path.basename(folders[0]))
     print(outputFolder)
-    shutil.copytree(folders[0], outputFolder, dirs_exist_ok=True)
+    print(folders)
+    if os.path.isdir(outputFolder):
+        shutil.rmtree(outputFolder)
+    shutil.copytree(folders[0], outputFolder)
     
     #Read the xml of the first folder
     mainXml = ET.parse(os.path.join(outputFolder, '_Frame.xml'))
@@ -136,4 +159,4 @@ def concatenateIview(folders, output='.'):
 
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':
-    concatenateIview_main()
+    concatenateIview()
