@@ -164,7 +164,7 @@ def concatenateIview(folders='.', output='.'):
         if not len(jpgFiles) == len(currentXmldict['Frames']['Frame']):
             print("Error, the number of .jpg is not correct")
 
-        for file, xml in zip(jpgFiles, currentXmldict['Frames']['Frame']):
+        for file, xml in zip(jpgFiles[1:], currentXmldict['Frames']['Frame'][1:]):
             shutil.copyfile(os.path.join(folder, file), os.path.join(outputFolder, str(lastSeq + int(xml['Seq'])).zfill(5) + file[5:]))
             fileSeq = {
                 'Seq': str(lastSeq + int(xml['Seq'])),
