@@ -149,7 +149,7 @@ def concatenateIview(folders='.', output='.'):
     #print(xmldict)
 
     #Copy name of the first folder for future copied jpg images
-    baseJpgImage = os.path.basename(outputFolder)
+    baseJpgImage = os.path.basename(outputFolder)[4:]
 
     #Copy all other folders
     for folder in folders:
