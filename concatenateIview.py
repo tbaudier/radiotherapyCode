@@ -116,6 +116,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.argument('folders', nargs=-1)
 @click.option('-o', '--output', default='.', help='Output folder')  
 def concatenateIview_main(folders, output):
+    folders = [xs for xs in folders]
     concatenateIview(folders)
 
 def concatenateIview(folders='.', output='.'):
@@ -147,6 +148,9 @@ def concatenateIview(folders='.', output='.'):
     lastCumulativeBeamMU = float(mainXmldict['Frames']['Frame'][-1]['CumulativeBeamMU'])
     #print(xmldict)
 
+    #Copy name of the first folder for future copied jpg images
+    baseJpgImage = os.path.basename(outputFolder)
+
     #Copy all other folders
     for folder in folders:
         if folder == folders[0]:
@@ -164,8 +168,8 @@ def concatenateIview(folders='.', output='.'):
         if not len(jpgFiles) == len(currentXmldict['Frames']['Frame']):
             print("Error, the number of .jpg is not correct")
 
-        for file, xml in zip(jpgFiles[1:], currentXmldict['Frames']['Frame'][1:]):
-            shutil.copyfile(os.path.join(folder, file), os.path.join(outputFolder, str(lastSeq + int(xml['Seq'])).zfill(5) + file[5:]))
+        for file, xml in zip(jpgFiles, currentXmldict['Frames']['Frame']):
+            shutil.copyfile(os.path.join(folder, file), os.path.join(outputFolder, str(lastSeq + int(xml['Seq'])).zfill(5) + '.' + baseJpgImage + '.jpg'))
             fileSeq = {
                 'Seq': str(lastSeq + int(xml['Seq'])),
                 'DeltaMs': str(lastDeltaMs + int(xml['DeltaMs'])),
