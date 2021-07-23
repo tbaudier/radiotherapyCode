@@ -1,31 +1,37 @@
 #!/usr/bin/env python3
 
 import click
-import itk
-
+import numpy as np
+import gatetools as gt
+import pydicom
+import os
 
 # -----------------------------------------------------------------------------
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('-i', '--image', default='.', help='Input image to erase (mhd)')
-@click.option('-o', '--output', default='.', help='Output image (mhd)')
-@click.option('-v', '--value', default=-1024, help='New value')
-@click.option('-N', '--slice', default=1, help='Number of slice to erase')
-def erasePatientFace_main(image, output, value, slice):
+@click.option('-o', '--output', default='output', help='Output folder to save dicom')
+@click.option('-v', '--value', default=0, help='New value')
+@click.option('-N', '--sliceposition', default=0.0, help='Position of slice to erase along z')
+@click.argument('input', type=str, required=True, nargs=-1)
+def erasePatientFace_main(input, output, value, sliceposition):
     '''
-    Set to "value" the first N slices along z to erase patient face in the image
+    Set to "value" the slice >= sliceposition along z to erase patient face in the image
     '''
-    erasePatientFace(image, output, value, slice)
+    erasePatientFace(input, output, value, sliceposition)
 
-def erasePatientFace(image, output, value, slice):
-  imageITK = itk.imread(image)
-  imageArray = itk.array_from_image(imageITK)
-  imageArray[-slice+1:, :, :] = value
-  outputITK = itk.image_from_array(imageArray)
-  outputITK.CopyInformation(imageITK)
-  itk.imwrite(outputITK, output)
-
+def erasePatientFace(input, output, value, sliceposition):
+    #Read input
+    series = gt.separate_series(input)
+    key = list(series.keys())[0]
+    for file in series[key]:
+      slice = pydicom.read_file(file)
+      if slice[0x0020, 0x0032][2] >= sliceposition:
+        arr = slice.pixel_array
+        arr[:] = value
+        slice.PixelData = arr.tobytes()
+      slice.save_as(os.path.join(output, file))
 
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':
     erasePatientFace_main()
+
