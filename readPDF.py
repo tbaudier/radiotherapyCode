@@ -5,8 +5,7 @@ import sys
 
 def readMonacoPDF(file):
     #Read the pdf
-    text = pdfminer.high_level.extract_text('/Users/tbaudier/guillaume/2004649_Segment.pdf')
-    #text = pdfminer.high_level.extract_text(file)
+    text = pdfminer.high_level.extract_text(file)
     #text = pdfminer.high_level.extract_text(sys.argv[1])
 
     ##Read the pdf
@@ -264,3 +263,77 @@ def readMonacoPDF(file):
 
     #Save the Excel
     wb.save(filename = "/Users/tbaudier/guillaume/" + str(mainDict["patientId"]) + "_values.xlsx")
+
+    return(mainDict)
+
+def convertToCorrectDict(mainDict, dataSet, fileNumber):
+    # Set variables
+    gantSpeed = 0
+    doseRate = 1
+    beam = 2
+    seg = 3
+    x1Diaphragm = 4
+    x2Diaphragm = 5
+    y1Diaphragm = 6
+    y2Diaphragm = 7
+    leaves = 8
+    area = 9
+    meanArea = 10
+    angles = 11
+    LSV = 12
+    AAV = 13
+    MCS = 14
+
+    MUbeam = 0.0
+    #start position
+    dataSet[fileNumber][gantSpeed]['X'].append(mainDict["1"]["Angle"])
+    dataSet[fileNumber][gantSpeed]['Y'].append(0)
+    dataSet[fileNumber][doseRate]['X'].append(mainDict["1"]["Angle"])
+    dataSet[fileNumber][doseRate]['Y'].append(mainDict["1"]["MU"])
+    MUbeam += float(mainDict["1"]["MU"])
+    dataSet[fileNumber][beam]['X'].append(mainDict["1"]["Angle"])
+    dataSet[fileNumber][beam]['Y'].append(0)
+    dataSet[fileNumber][seg]['X'].append(mainDict["1"]["Angle"])
+    dataSet[fileNumber][seg]['Y'].append(0)
+    dataSet[fileNumber][x1Diaphragm]['X'].append(mainDict["1"]["Angle"])
+    dataSet[fileNumber][x1Diaphragm]['Y'].append(mainDict["1"]["Length1"])
+    dataSet[fileNumber][x2Diaphragm]['X'].append(mainDict["1"]["Angle"])
+    dataSet[fileNumber][x2Diaphragm]['Y'].append(mainDict["1"]["Length2"]*-1.0)
+    dataSet[fileNumber][y1Diaphragm]['X'].append(mainDict["1"]["Angle"])
+    dataSet[fileNumber][y1Diaphragm]['Y'].append(2000)
+    dataSet[fileNumber][y2Diaphragm]['X'].append(mainDict["1"]["Angle"])
+    dataSet[fileNumber][y2Diaphragm]['Y'].append(2000)
+    for row in range(mainDict["nbStrips"]):
+        dataSet[fileNumber][leaves][0][row]['X'].append(mainDict["1"]["Y"][row])
+        dataSet[fileNumber][leaves][0][row]['Y'].append(mainDict["1"]["X1"][row]*-100.0)
+        dataSet[fileNumber][leaves][1][row]['X'].append(mainDict["1"]["Y"][row])
+        dataSet[fileNumber][leaves][1][row]['Y'].append(mainDict["1"]["X2"][row]*-100.0)
+
+
+    #all ended position
+    for i in range(len(mainDict)-3):
+        if "End" in mainDict[str(i+1)]["Tag"]:
+                dataSet[fileNumber][gantSpeed]['X'].append(mainDict[str(i+1)]["Angle"])
+                dataSet[fileNumber][gantSpeed]['Y'].append(0)
+                dataSet[fileNumber][doseRate]['X'].append(mainDict[str(i+1)]["Angle"])
+                dataSet[fileNumber][doseRate]['Y'].append(mainDict[str(i+1)]["MU"])
+                MUbeam += float(mainDict[str(i+1)]["MU"])
+                dataSet[fileNumber][beam]['X'].append(mainDict[str(i+1)]["Angle"])
+                dataSet[fileNumber][beam]['Y'].append(0)
+                dataSet[fileNumber][seg]['X'].append(mainDict[str(i+1)]["Angle"])
+                dataSet[fileNumber][seg]['Y'].append(0)
+                dataSet[fileNumber][x1Diaphragm]['X'].append(mainDict[str(i+1)]["Angle"])
+                dataSet[fileNumber][x1Diaphragm]['Y'].append(mainDict[str(i+1)]["Length1"])
+                dataSet[fileNumber][x2Diaphragm]['X'].append(mainDict[str(i+1)]["Angle"])
+                dataSet[fileNumber][x2Diaphragm]['Y'].append(mainDict[str(i+1)]["Length2"]*-1.0)
+                dataSet[fileNumber][y1Diaphragm]['X'].append(mainDict[str(i+1)]["Angle"])
+                dataSet[fileNumber][y1Diaphragm]['Y'].append(2000)
+                dataSet[fileNumber][y2Diaphragm]['X'].append(mainDict[str(i+1)]["Angle"])
+                dataSet[fileNumber][y2Diaphragm]['Y'].append(2000)
+                for row in range(mainDict["nbStrips"]):
+                    dataSet[fileNumber][leaves][0][row]['X'].append(mainDict[str(i+1)]["Y"][row])
+                    dataSet[fileNumber][leaves][0][row]['Y'].append(mainDict[str(i+1)]["X1"][row]*-100.0)
+                    dataSet[fileNumber][leaves][1][row]['X'].append(mainDict[str(i+1)]["Y"][row])
+                    dataSet[fileNumber][leaves][1][row]['Y'].append(mainDict[str(i+1)]["X2"][row]*-100.0)
+
+    return((dataSet, MUbeam))
