@@ -2,6 +2,7 @@ import pdfminer.high_level
 import openpyxl
 from openpyxl import Workbook
 import sys
+import os
 
 def readMonacoPDF(file):
     #Read the pdf
@@ -74,6 +75,7 @@ def readMonacoPDF(file):
                 if readIndex == len(lines):
                     break
                 mainDict[str(indexTag+nbColumn)] = {}
+                mainDict[str(indexTag+nbColumn)]["Sequence"] = int(lines[readIndex-1])
                 mainDict[str(indexTag+nbColumn)]["Tag"] = lines[readIndex]
                 if lines[readIndex+1] != '':
                     mainDict[str(indexTag+nbColumn)]["Angle"] = float(lines[readIndex+1])
@@ -201,6 +203,9 @@ def readMonacoPDF(file):
             print("nbStrips is not equal to 80")
             print(mainDict["nbStrips"])
     for i in range(len(mainDict)-3):
+        if mainDict[str(i+1)]["Sequence"] == "":
+            print("Sequence is not correct for " + str(i+1))
+            print(mainDict[str(i+1)]["Sequence"])
         if mainDict[str(i+1)]["Tag"] == "":
             print("Tag is not correct for " + str(i+1))
             print(mainDict[str(i+1)]["Tag"])
@@ -246,23 +251,24 @@ def readMonacoPDF(file):
 
     #Write for all entries in mainDict
     for i in range(len(mainDict)-3):
-        _ = ws.cell(column=3*i+2, row=1, value=mainDict[str(i+1)]["Tag"])
-        _ = ws.cell(column=3*i+2, row=2, value=mainDict[str(i+1)]["Angle"])
-        _ = ws.cell(column=3*i+2, row=3, value=mainDict[str(i+1)]["Length1"])
-        _ = ws.cell(column=3*i+2, row=4, value=mainDict[str(i+1)]["Length2"])
-        _ = ws.cell(column=3*i+2, row=5, value=mainDict[str(i+1)]["MU"])
-        _ = ws.cell(column=3*i+2, row=6, value="Y")
+        _ = ws.cell(column=3*i+2, row=1, value=mainDict[str(i+1)]["Sequence"])
+        _ = ws.cell(column=3*i+2, row=2, value=mainDict[str(i+1)]["Tag"])
+        _ = ws.cell(column=3*i+2, row=3, value=mainDict[str(i+1)]["Angle"])
+        _ = ws.cell(column=3*i+2, row=4, value=mainDict[str(i+1)]["Length1"])
+        _ = ws.cell(column=3*i+2, row=5, value=mainDict[str(i+1)]["Length2"])
+        _ = ws.cell(column=3*i+2, row=6, value=mainDict[str(i+1)]["MU"])
+        _ = ws.cell(column=3*i+2, row=7, value="Y")
         for row in range(mainDict["nbStrips"]):
-            _ = ws.cell(column=3*i+2, row=row+7, value=str(mainDict[str(i+1)]["Y"][row]))
+            _ = ws.cell(column=3*i+2, row=row+8, value=str(mainDict[str(i+1)]["Y"][row]))
         _ = ws.cell(column=3*i+3, row=6, value="X1")
         for row in range(mainDict["nbStrips"]):
-            _ = ws.cell(column=3*i+3, row=row+7, value=str(mainDict[str(i+1)]["X1"][row]))
+            _ = ws.cell(column=3*i+3, row=row+8, value=str(mainDict[str(i+1)]["X1"][row]))
         _ = ws.cell(column=3*i+4, row=6, value="X2")
         for row in range(mainDict["nbStrips"]):
-            _ = ws.cell(column=3*i+4, row=row+7, value=str(mainDict[str(i+1)]["X2"][row]))
+            _ = ws.cell(column=3*i+4, row=row+8, value=str(mainDict[str(i+1)]["X2"][row]))
 
     #Save the Excel
-    wb.save(filename = "/Users/tbaudier/guillaume/" + str(mainDict["patientId"]) + "_values.xlsx")
+    wb.save(filename = os.path.join(os.path.dirname(file), str(mainDict["patientId"]) + "_values.xlsx"))
 
     return(mainDict)
 
@@ -286,33 +292,36 @@ def convertToCorrectDict(mainDict, dataSet, fileNumber):
 
     MUbeam = 0.0
     #start position
-    dataSet[fileNumber][gantSpeed]['X'].append(mainDict["1"]["Angle"])
+    tmpDictIndex = 0
+    while mainDict[str(tmpDictIndex + 1)]["Sequence"] != fileNumber + 1:
+        tmpDictIndex += 1
+    dataSet[fileNumber][gantSpeed]['X'].append(mainDict[str(tmpDictIndex + 1)]["Angle"])
     dataSet[fileNumber][gantSpeed]['Y'].append(0)
-    dataSet[fileNumber][doseRate]['X'].append(mainDict["1"]["Angle"])
-    dataSet[fileNumber][doseRate]['Y'].append(mainDict["1"]["MU"])
-    MUbeam += float(mainDict["1"]["MU"])
-    dataSet[fileNumber][beam]['X'].append(mainDict["1"]["Angle"])
+    dataSet[fileNumber][doseRate]['X'].append(mainDict[str(tmpDictIndex + 1)]["Angle"])
+    dataSet[fileNumber][doseRate]['Y'].append(mainDict[str(tmpDictIndex + 1)]["MU"])
+    MUbeam += float(mainDict[str(tmpDictIndex + 1)]["MU"])
+    dataSet[fileNumber][beam]['X'].append(mainDict[str(tmpDictIndex + 1)]["Angle"])
     dataSet[fileNumber][beam]['Y'].append(0)
-    dataSet[fileNumber][seg]['X'].append(mainDict["1"]["Angle"])
+    dataSet[fileNumber][seg]['X'].append(mainDict[str(tmpDictIndex + 1)]["Angle"])
     dataSet[fileNumber][seg]['Y'].append(0)
-    dataSet[fileNumber][x1Diaphragm]['X'].append(mainDict["1"]["Angle"])
-    dataSet[fileNumber][x1Diaphragm]['Y'].append(mainDict["1"]["Length1"])
-    dataSet[fileNumber][x2Diaphragm]['X'].append(mainDict["1"]["Angle"])
-    dataSet[fileNumber][x2Diaphragm]['Y'].append(mainDict["1"]["Length2"]*-1.0)
-    dataSet[fileNumber][y1Diaphragm]['X'].append(mainDict["1"]["Angle"])
+    dataSet[fileNumber][x1Diaphragm]['X'].append(mainDict[str(tmpDictIndex + 1)]["Angle"])
+    dataSet[fileNumber][x1Diaphragm]['Y'].append(mainDict[str(tmpDictIndex + 1)]["Length1"])
+    dataSet[fileNumber][x2Diaphragm]['X'].append(mainDict[str(tmpDictIndex + 1)]["Angle"])
+    dataSet[fileNumber][x2Diaphragm]['Y'].append(mainDict[str(tmpDictIndex + 1)]["Length2"]*-1.0)
+    dataSet[fileNumber][y1Diaphragm]['X'].append(mainDict[str(tmpDictIndex + 1)]["Angle"])
     dataSet[fileNumber][y1Diaphragm]['Y'].append(2000)
-    dataSet[fileNumber][y2Diaphragm]['X'].append(mainDict["1"]["Angle"])
+    dataSet[fileNumber][y2Diaphragm]['X'].append(mainDict[str(tmpDictIndex + 1)]["Angle"])
     dataSet[fileNumber][y2Diaphragm]['Y'].append(2000)
     for row in range(mainDict["nbStrips"]):
-        dataSet[fileNumber][leaves][0][row]['X'].append(mainDict["1"]["Y"][row])
-        dataSet[fileNumber][leaves][0][row]['Y'].append(mainDict["1"]["X1"][row]*-100.0)
-        dataSet[fileNumber][leaves][1][row]['X'].append(mainDict["1"]["Y"][row])
-        dataSet[fileNumber][leaves][1][row]['Y'].append(mainDict["1"]["X2"][row]*-100.0)
+        dataSet[fileNumber][leaves][0][row]['X'].append(mainDict[str(tmpDictIndex + 1)]["Y"][row])
+        dataSet[fileNumber][leaves][0][row]['Y'].append(mainDict[str(tmpDictIndex + 1)]["X1"][row]*-100.0)
+        dataSet[fileNumber][leaves][1][row]['X'].append(mainDict[str(tmpDictIndex + 1)]["Y"][row])
+        dataSet[fileNumber][leaves][1][row]['Y'].append(mainDict[str(tmpDictIndex + 1)]["X2"][row]*-100.0)
 
 
     #all ended position
     for i in range(len(mainDict)-3):
-        if "End" in mainDict[str(i+1)]["Tag"]:
+        if "End" in mainDict[str(i+1)]["Tag"] and (fileNumber + 1 == mainDict[str(i+1)]["Sequence"]):
                 dataSet[fileNumber][gantSpeed]['X'].append(mainDict[str(i+1)]["Angle"])
                 dataSet[fileNumber][gantSpeed]['Y'].append(0)
                 dataSet[fileNumber][doseRate]['X'].append(mainDict[str(i+1)]["Angle"])

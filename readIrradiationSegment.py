@@ -153,7 +153,7 @@ def plot(data, category, files):
         XdiaphragmXplot = np.arange(-200.0, 201.0, 200.0)
         YdiaphragmX1plot = [data[0][x1Diaphragm]['Y'][time]*10.0] * len(XdiaphragmXplot)
         YdiaphragmX2plot = [data[0][x2Diaphragm]['Y'][time]*-10.0] * len(XdiaphragmXplot)
-        XLeafplot = np.arange(200.0, -200.0, -5.0)
+        XLeafplot = np.arange(-197.5, 202.5, 5.0)
         YLeaf1plot = [0.0]*80
         YLeaf2plot = [0.0]*80
         for i in range(len(data[0][leaves][0])):
@@ -161,10 +161,12 @@ def plot(data, category, files):
             YLeaf2plot[i] = data[0][leaves][1][i]['Y'][time]*0.1
         fig, ax = plt.subplots()
         plt.subplots_adjust(bottom=0.25)
-        diaX1plot, = plt.plot(XdiaphragmXplot, YdiaphragmX1plot, 'r', label='Diaphragm X1')
-        diaX2plot, = plt.plot(XdiaphragmXplot, YdiaphragmX2plot, 'm', label='Diaphragm X2')
-        leafX1plot, = plt.step(YLeaf1plot, XLeafplot, 'g', where='mid', label='Leaf1')
-        leafX2plot, = plt.step(YLeaf2plot, XLeafplot, 'b', where='mid', label='Leaf2')
+        diaX1plot, = plt.plot(YdiaphragmX1plot, XdiaphragmXplot, 'r', label='Diaphragm X1')
+        diaX2plot, = plt.plot(YdiaphragmX2plot, XdiaphragmXplot, 'm', label='Diaphragm X2')
+        leafX1plotDot, = plt.plot(XLeafplot, YLeaf1plot, 'go', label='Leaf1', alpha=0.3)
+        leafX2plotDot, = plt.plot(XLeafplot, YLeaf2plot, 'bo', label='Leaf2', alpha=0.3)
+        leafX1plot, = plt.step(XLeafplot, YLeaf1plot, 'g', where='mid', label='Leaf1')
+        leafX2plot, = plt.step(XLeafplot, YLeaf2plot, 'b', where='mid', label='Leaf2')
         plt.title("Angle")
         plt.axis([-200.0, 200.0, -200.0, 200.0])
         plt.xlabel("X position [mm]")
@@ -179,15 +181,17 @@ def plot(data, category, files):
         def updateLeaf(val):
             timeUpdated = int(float(sTime.val)/0.250)
             angleDegree = data[0][x1Diaphragm]['X'][timeUpdated]
-            diaX1plot.set_ydata([data[0][x1Diaphragm]['Y'][timeUpdated]*10.0] * len(XdiaphragmXplot))
-            diaX2plot.set_ydata([data[0][x2Diaphragm]['Y'][timeUpdated]*-10.0] * len(XdiaphragmXplot))
+            diaX1plot.set_xdata([data[0][x1Diaphragm]['Y'][timeUpdated]*10.0] * len(XdiaphragmXplot))
+            diaX2plot.set_xdata([data[0][x2Diaphragm]['Y'][timeUpdated]*-10.0] * len(XdiaphragmXplot))
             YLeaf1plot = [0.0]*80
             YLeaf2plot = [0.0]*80
             for i in range(len(data[0][leaves][0])):
                 YLeaf1plot[i] = data[0][leaves][0][i]['Y'][timeUpdated]*0.1
                 YLeaf2plot[i] = data[0][leaves][1][i]['Y'][timeUpdated]*0.1
-            leafX1plot.set_xdata(YLeaf1plot)
-            leafX2plot.set_xdata(YLeaf2plot)
+            leafX1plotDot.set_ydata(YLeaf1plot)
+            leafX2plotDot.set_ydata(YLeaf2plot)
+            leafX1plot.set_ydata(YLeaf1plot)
+            leafX2plot.set_ydata(YLeaf2plot)
             plt.title("Angle: " + str(angleDegree) + " degree")
             fig.canvas.draw_idle()
         sTime.on_changed(updateLeaf)
@@ -231,6 +235,17 @@ def readSegment(files, category):
             error("Choose a xml file")
     else:
         files = [files]
+
+    # if pdf file, the number of sequence is inside the file. So add the file for all sequence
+    if len(files) == 1 and files[0].endswith(".pdf"):
+        mainDict = readPDF.readMonacoPDF(files[0])
+        sequenceMax = 0
+        for key in mainDict.keys():
+            if not key.startswith("patientId") and not key.startswith("fraction") and not key.startswith("nbStrips"):
+                if mainDict[key]["Sequence"] > sequenceMax:
+                    sequenceMax = mainDict[key]["Sequence"]
+        files = [files[0]]*sequenceMax
+            
 
     #Initialize variable
     nbSideLeaf = 2
