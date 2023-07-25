@@ -18,6 +18,7 @@ pathOfFile = pathlib.Path(__file__).parent.resolve()
 sys.path.insert(0, pathOfFile)
 import readXml
 import readPDF
+import readRTPlan
 
 # Set file pathnames
 fileDCAT = "/home/tbaudier/marieClaude/positionLameXML/20180426_HerreriasDCATT0.xml"
@@ -279,6 +280,8 @@ def readSegment(files, category):
         elif file.endswith(".pdf"):
             mainDict = readPDF.readMonacoPDF(file)
             dataSet, MUbeam = readPDF.convertToCorrectDict(mainDict, dataSet, fileNumber)
+        elif file.endswith(".dcm"):
+            dataSet, MUbeam = readRTPlan.readDicomRTPlan(file, dataSet, fileNumber)
         else:
             print("Cannot open " + file)
             continue
@@ -347,7 +350,10 @@ def readSegment(files, category):
                     nbOpennedLeaf += 1
                 dataSet[fileNumber][area]['Y'][i] += abs((posY1 - posY2)*(posX2 - posX1))
             dataSet[fileNumber][area]['Y'][i] *= 1.0/10000.0 #in cm2
-            dataSet[fileNumber][meanArea]['Y'].append(dataSet[fileNumber][area]['Y'][i] / nbOpennedLeaf) #mean openned area
+            if nbOpennedLeaf == 0:
+                dataSet[fileNumber][meanArea]['Y'].append(0)
+            else:
+                dataSet[fileNumber][meanArea]['Y'].append(dataSet[fileNumber][area]['Y'][i] / nbOpennedLeaf) #mean openned area
 
         #Compute LSV & AAV
         tmpPosMaxAAV = [-2000.0]*nbLeaf
@@ -398,7 +404,10 @@ def readSegment(files, category):
                 if posY1 > tmpPosMaxAAV[k]:
                     tmpPosMaxAAV[k] = posY1
 
-            dataSet[fileNumber][LSV]['Y'].append((1-posSumLeft/(N*(tmpPosMaxLSV-tmpPosMinLSV)))*((1-posSumRight/(N*(tmpPosMaxLSV-tmpPosMinLSV)))))
+            if N == 0:
+                dataSet[fileNumber][LSV]['Y'].append(0)
+            else:
+                dataSet[fileNumber][LSV]['Y'].append((1-posSumLeft/(N*(tmpPosMaxLSV-tmpPosMinLSV)))*((1-posSumRight/(N*(tmpPosMaxLSV-tmpPosMinLSV)))))
             dataSet[fileNumber][AAV]['Y'].append(posSum)
 
         #Still compute AAV
@@ -412,8 +421,9 @@ def readSegment(files, category):
 
         #Compute MCS
         dataSet[fileNumber][MCS] = 0.0
-        for i in range(0, nbXElement):
-            dataSet[fileNumber][MCS] += dataSet[fileNumber][AAV]['Y'][i]*dataSet[fileNumber][LSV]['Y'][i]*dataSet[fileNumber][doseRate]['Y'][i]/MUbeam
+        if not MUbeam ==0:
+            for i in range(0, nbXElement):
+                dataSet[fileNumber][MCS] += dataSet[fileNumber][AAV]['Y'][i]*dataSet[fileNumber][LSV]['Y'][i]*dataSet[fileNumber][doseRate]['Y'][i]/MUbeam
 
         fileNumber += 1
 
